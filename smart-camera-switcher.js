@@ -32,7 +32,7 @@ class SmartCameraSwitcher extends HTMLElement {
       thumbnail_camera_view: 'live',
       fit_mode: 'cover',
       show_names: false,
-      manual_timeout_seconds: 60,
+      manual_timeout_seconds: 10,
       min_auto_switch_seconds: 3,
       switch_hold_seconds: 2,
       debug: false,

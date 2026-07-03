@@ -111,7 +111,7 @@ cameras:
 | `thumbnail_camera_view` | No | Camera view mode for the circular selectors. Defaults to `live`. Set to `auto` if you want lighter still/auto previews. |
 | `fit_mode` | No | Camera fit mode. Defaults to `cover`. |
 | `show_names` | No | Show labels over the circular camera buttons. Defaults to `false`. |
-| `manual_timeout_seconds` | No | Return the selector to auto mode after a manual camera tap. Defaults to `60`. Set to `0` if manual selection should stay until changed. |
+| `manual_timeout_seconds` | No | Return the selector to auto mode after a manual camera tap. Defaults to `10`. Set to `0` if manual selection should stay until changed. |
 | `min_auto_switch_seconds` | No | Seconds an auto-follow target must stay stable before switching, including switching back to `default_camera`. Defaults to `3`. Manual taps switch immediately. |
 | `switch_hold_seconds` | No | Seconds to keep the previous main camera visible while the next stream is prepared. Defaults to `2`. |
 
