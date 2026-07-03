@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Smart Camera Switcher icon</title>
+  <desc id="desc">A camera lens with switching arrows on a blue background.</desc>
+  <defs>
+    <linearGradient id="bg" x1="72" y1="64" x2="440" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="lens" x1="164" y1="152" x2="352" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e0f2fe"/>
+      <stop offset="1" stop-color="#93c5fd"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path fill="#ffffff" d="M142 176h62l26-34h88l26 34h26c36 0 66 30 66 66v112c0 36-30 66-66 66H142c-36 0-66-30-66-66V242c0-36 30-66 66-66Z"/>
+  <circle cx="256" cy="302" r="94" fill="#0f172a" opacity=".12"/>
+  <circle cx="256" cy="292" r="78" fill="url(#lens)"/>
+  <circle cx="256" cy="292" r="42" fill="#1d4ed8"/>
+  <circle cx="236" cy="270" r="16" fill="#dbeafe"/>
+  <path fill="#0f172a" opacity=".72" d="M352 122a18 18 0 0 1 25-2l50 42a18 18 0 0 1 0 28l-50 42a18 18 0 0 1-23-28l16-14h-72a18 18 0 0 1 0-36h72l-16-13a18 18 0 0 1-2-19Zm-192 268a18 18 0 0 1-25 2l-50-42a18 18 0 0 1 0-28l50-42a18 18 0 0 1 23 28l-16 14h72a18 18 0 0 1 0 36h-72l16 13a18 18 0 0 1 2 19Z"/>
+</svg>

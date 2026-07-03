@@ -1,5 +1,9 @@
 # Smart Camera Switcher
 
+<p align="center">
+  <img src="./logo.svg" alt="Smart Camera Switcher logo" width="520">
+</p>
+
 Smart Camera Switcher is a Home Assistant Lovelace custom card that shows one main camera feed with circular camera selectors underneath it. The main view can follow an active-motion sensor automatically, and you can manually switch cameras by tapping a circle.
 
 ## Installation

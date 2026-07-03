@@ -5,7 +5,9 @@
   "main": "smart-camera-switcher.js",
   "files": [
     "smart-camera-switcher.js",
-    "dist"
+    "dist",
+    "icon.svg",
+    "logo.svg"
   ],
   "scripts": {
     "check": "node --check smart-camera-switcher.js && node --check dist/smart-camera-switcher.js"

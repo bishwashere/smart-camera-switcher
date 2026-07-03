@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 240" role="img" aria-labelledby="title desc">
+  <title id="title">Smart Camera Switcher logo</title>
+  <desc id="desc">Smart Camera Switcher wordmark with a camera switch icon.</desc>
+  <rect width="960" height="240" rx="40" fill="#f8fafc"/>
+  <g transform="translate(48 40)">
+    <rect width="160" height="160" rx="36" fill="#0ea5e9"/>
+    <path fill="#ffffff" d="M43 62h36l13-17h40l13 17h15c19 0 35 16 35 35v44c0 19-16 35-35 35H43c-19 0-35-16-35-35V97c0-19 16-35 35-35Z" transform="scale(.82) translate(18 16)"/>
+    <circle cx="82" cy="102" r="35" fill="#dbeafe"/>
+    <circle cx="82" cy="102" r="18" fill="#1d4ed8"/>
+    <path fill="#0f172a" opacity=".72" d="M117 42a8 8 0 0 1 11-1l23 19a8 8 0 0 1 0 12l-23 19a8 8 0 0 1-10-12l7-6H94a8 8 0 0 1 0-16h31l-7-6a8 8 0 0 1-1-9ZM43 137a8 8 0 0 1-11 1L9 119a8 8 0 0 1 0-12l23-19a8 8 0 0 1 10 12l-7 6h31a8 8 0 0 1 0 16H35l7 6a8 8 0 0 1 1 9Z"/>
+  </g>
+  <text x="248" y="112" fill="#0f172a" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="48" font-weight="700">Smart Camera</text>
+  <text x="248" y="162" fill="#2563eb" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="42" font-weight="700">Switcher</text>
+  <text x="602" y="152" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24">Home Assistant card</text>
+</svg>
