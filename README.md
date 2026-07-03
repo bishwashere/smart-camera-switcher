@@ -41,6 +41,20 @@ type: module
 
 4. Refresh your browser.
 
+### Add it to a dashboard
+
+1. Open the dashboard where you want the card.
+2. Click the top-right three-dot menu.
+3. Click **Edit dashboard**.
+4. Click **Add card**.
+5. Choose **Manual**.
+6. Paste one of the YAML examples below.
+7. Replace each camera `entity` with your own Home Assistant camera entity.
+8. Change each camera `id` to a short stable name, such as `front_door` or `driveway`.
+9. If you use `selector_entity`, create the helper shown in **Optional Helper** and make its options match your camera IDs.
+10. If you use `active_entity`, replace `sensor.active_camera_example` with a sensor whose state matches one of your camera IDs.
+11. Click **Save**.
+
 ## Basic Example
 
 ```yaml
@@ -111,8 +125,6 @@ Smart Camera Switcher chooses the visible camera in this order:
 So if you want a fallback default camera, set `default_camera` or put it first in the `cameras` list.
 
 The card does not render an Auto button. Auto is the normal helper state behind the scenes; the visible circular buttons are only your configured cameras.
-
-If the example entities are left unchanged or a configured entity does not exist, the card shows a setup message instead of an empty camera viewer.
 
 ## Optional Helper
 
