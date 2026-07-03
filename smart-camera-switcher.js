@@ -25,11 +25,14 @@ class SmartCameraSwitcher extends HTMLElement {
       title: 'Smart Camera',
       active_entity: undefined,
       selector_entity: undefined,
+      auto_option: 'auto',
       max_height: '25vh',
       camera_view: 'live',
       thumbnail_camera_view: 'auto',
       fit_mode: 'cover',
       show_names: false,
+      show_auto_control: true,
+      manual_timeout_seconds: 0,
       debug: false,
       ...config,
     };
@@ -39,13 +42,14 @@ class SmartCameraSwitcher extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._scheduleManualReset();
     this._update();
   }
 
   _activeCameraId() {
     const cfg = this._config;
     const manual = cfg.selector_entity ? this._hass.states[cfg.selector_entity]?.state : undefined;
-    if (manual && manual !== 'auto' && cfg.cameras.some((camera) => camera.id === manual)) {
+    if (manual && manual !== cfg.auto_option && cfg.cameras.some((camera) => camera.id === manual)) {
       return manual;
     }
 
@@ -58,13 +62,50 @@ class SmartCameraSwitcher extends HTMLElement {
   }
 
   _selectCamera(camera) {
+    this._selectOption(camera.id);
+    this._scheduleManualReset(camera.id);
+  }
+
+  _selectAuto() {
+    this._selectOption(this._config.auto_option);
+    this._clearManualReset();
+  }
+
+  _selectOption(option) {
     const selector = this._config.selector_entity;
     if (!selector) return;
 
     this._hass.callService('input_select', 'select_option', {
       entity_id: selector,
-      option: camera.id,
+      option,
     });
+  }
+
+  _scheduleManualReset(selectedOption) {
+    const cfg = this._config;
+    const timeout = Number(cfg?.manual_timeout_seconds || 0);
+    if (!this._hass || !cfg?.selector_entity || !cfg.auto_option || timeout <= 0) return;
+
+    const manual = selectedOption || this._hass.states[cfg.selector_entity]?.state;
+    if (!manual || manual === cfg.auto_option) {
+      this._clearManualReset();
+      return;
+    }
+
+    if (this._manualResetTimer && this._manualResetOption === manual) return;
+    this._clearManualReset();
+    this._manualResetOption = manual;
+    this._manualResetTimer = window.setTimeout(() => {
+      const current = this._hass?.states[cfg.selector_entity]?.state;
+      if (current === manual) this._selectOption(cfg.auto_option);
+      this._clearManualReset();
+    }, timeout * 1000);
+  }
+
+  _clearManualReset() {
+    if (this._manualResetTimer) window.clearTimeout(this._manualResetTimer);
+    this._manualResetTimer = undefined;
+    this._manualResetOption = undefined;
   }
 
   _moreInfo(entityId) {
@@ -91,6 +132,8 @@ class SmartCameraSwitcher extends HTMLElement {
 
     const cfg = this._config;
     const activeCamera = cfg.cameras.find((camera) => camera.id === activeId) || cfg.cameras[0];
+    const selectorState = cfg.selector_entity ? this._hass.states[cfg.selector_entity]?.state : undefined;
+    const showAuto = cfg.selector_entity && cfg.auto_option && cfg.show_auto_control !== false;
     this._renderedActiveId = activeId;
     this._renderedCameraCount = cfg.cameras.length;
     this._debug('render', {
@@ -109,6 +152,11 @@ class SmartCameraSwitcher extends HTMLElement {
           <hui-picture-entity-card></hui-picture-entity-card>
         </div>
         <div class="thumbs">
+          ${
+            showAuto
+              ? `<button class="thumb auto ${selectorState === cfg.auto_option ? 'active' : ''}" data-auto="true" title="${this._escape(cfg.auto_option)}"><span>A</span></button>`
+              : ''
+          }
           ${cfg.cameras
             .map(
               (camera) => `
@@ -172,6 +220,20 @@ class SmartCameraSwitcher extends HTMLElement {
             color: white;
             background: rgba(0,0,0,.5);
           }
+          smart-camera-switcher .thumb.auto {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-text-color);
+          }
+          smart-camera-switcher .thumb.auto span {
+            position: static;
+            padding: 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: inherit;
+            background: transparent;
+          }
           smart-camera-switcher .debug-log {
             margin: 0;
             padding: 8px 12px 12px;
@@ -187,6 +249,10 @@ class SmartCameraSwitcher extends HTMLElement {
 
     this._configurePictureCard(this.querySelector('.viewer hui-picture-entity-card'), activeCamera);
     for (const button of this.querySelectorAll('.thumb')) {
+      if (button.dataset.auto === 'true') {
+        button.addEventListener('click', () => this._selectAuto());
+        continue;
+      }
       const camera = cfg.cameras.find((item) => item.id === button.dataset.camera);
       this._configurePictureCard(button.querySelector('hui-picture-entity-card'), camera, {
         aspect_ratio: '1:1',

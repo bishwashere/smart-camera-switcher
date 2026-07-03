@@ -84,6 +84,7 @@ cameras:
 | `type` | Yes | Must be `custom:smart-camera-switcher`. |
 | `cameras` | Yes | List of camera objects with `id`, `entity`, and optional `name`. |
 | `selector_entity` | No | An `input_select` used for manual camera selection. |
+| `auto_option` | No | The selector option that means auto-follow mode. Defaults to `auto`. |
 | `active_entity` | No | A sensor whose state matches one of the camera IDs. Useful for auto-follow behavior. |
 | `title` | No | Card title. |
 | `max_height` | No | Height of the main camera viewer, for example `25vh` or `320px`. |
@@ -91,6 +92,8 @@ cameras:
 | `thumbnail_camera_view` | No | Camera view mode for the circular selectors. Defaults to `auto` so only the main viewer opens a live stream. |
 | `fit_mode` | No | Camera fit mode. Defaults to `cover`. |
 | `show_names` | No | Show labels over the circular camera buttons. Defaults to `false`. |
+| `show_auto_control` | No | Show an Auto selector when `selector_entity` is configured. Defaults to `true`. |
+| `manual_timeout_seconds` | No | Return the selector to auto mode after a manual camera tap. Defaults to `0`, which means manual selection stays until changed. |
 
 ## Camera Selection Priority
 
