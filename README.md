@@ -14,8 +14,10 @@ Smart Camera Switcher is a Home Assistant Lovelace custom card that shows one ac
 
 4. Set **Type** to **Dashboard**.
 5. Click **Add**.
-6. Install **Smart Camera Switcher**.
-7. Refresh your browser.
+6. Go back to HACS and search for **Smart Camera Switcher**.
+7. Open **Smart Camera Switcher**.
+8. Click **Download**.
+9. Refresh your browser after HACS finishes installing it.
 
 ### Manual install
 
