@@ -91,6 +91,16 @@ cameras:
 | `fit_mode` | No | Camera fit mode. Defaults to `cover`. |
 | `show_names` | No | Show labels over the circular camera buttons. Defaults to `false`. |
 
+## Camera Selection Priority
+
+Smart Camera Switcher chooses the visible camera in this order:
+
+1. `selector_entity`, when it exists and its state is not `auto`. This is the manual override.
+2. `active_entity`, when it exists and its state matches one of your camera IDs. This is useful for automatic camera selection.
+3. The first item in `cameras`, when neither helper gives a valid camera ID.
+
+So if you want a fallback default camera, put it first in the `cameras` list.
+
 ## Optional Helper
 
 For manual selection, create an `input_select` whose options match your camera IDs.
