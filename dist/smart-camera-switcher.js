@@ -38,7 +38,7 @@ class SmartCameraSwitcher extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    this._render();
+    this._update();
   }
 
   _activeCameraId() {
@@ -72,12 +72,26 @@ class SmartCameraSwitcher extends HTMLElement {
     this.dispatchEvent(event);
   }
 
-  _render() {
+  _update() {
     if (!this._hass || !this._config) return;
 
     const cfg = this._config;
     const activeId = this._activeCameraId();
+    if (this._renderedActiveId === activeId && this._renderedCameraCount === cfg.cameras.length) {
+      this._updateChildHass();
+      return;
+    }
+
+    this._render(activeId);
+  }
+
+  _render(activeId) {
+    if (!this._hass || !this._config) return;
+
+    const cfg = this._config;
     const activeCamera = cfg.cameras.find((camera) => camera.id === activeId) || cfg.cameras[0];
+    this._renderedActiveId = activeId;
+    this._renderedCameraCount = cfg.cameras.length;
     this._debug('render', {
       activeId,
       activeCamera,
@@ -201,6 +215,7 @@ class SmartCameraSwitcher extends HTMLElement {
         .then((helpers) => {
           if (!element.isConnected) return;
           const card = helpers.createCardElement(childConfig);
+          card.dataset.smartCameraChild = 'true';
           card.hass = this._hass;
           element.replaceWith(card);
           this._debug('picture card configured', childConfig);
@@ -225,9 +240,16 @@ class SmartCameraSwitcher extends HTMLElement {
     try {
       element.setConfig(childConfig);
       element.hass = this._hass;
+      element.dataset.smartCameraChild = 'true';
       this._debug('picture card configured', childConfig);
     } catch (error) {
       console.error('smart-camera-switcher: picture card configuration failed', childConfig, error);
+    }
+  }
+
+  _updateChildHass() {
+    for (const element of this.querySelectorAll('[data-smart-camera-child="true"]')) {
+      element.hass = this._hass;
     }
   }
 
