@@ -29,7 +29,7 @@ class SmartCameraSwitcher extends HTMLElement {
       auto_option: 'auto',
       max_height: '25vh',
       camera_view: 'live',
-      thumbnail_camera_view: 'auto',
+      thumbnail_camera_view: 'live',
       fit_mode: 'cover',
       show_names: false,
       show_auto_control: true,
