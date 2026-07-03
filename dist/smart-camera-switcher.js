@@ -29,8 +29,10 @@ class SmartCameraSwitcher extends HTMLElement {
       camera_view: 'live',
       fit_mode: 'cover',
       show_names: false,
+      debug: false,
       ...config,
     };
+    this._debug('configured', this._config);
   }
 
   set hass(hass) {
@@ -75,6 +77,13 @@ class SmartCameraSwitcher extends HTMLElement {
     const cfg = this._config;
     const activeId = this._activeCameraId();
     const activeCamera = cfg.cameras.find((camera) => camera.id === activeId) || cfg.cameras[0];
+    this._debug('render', {
+      activeId,
+      activeCamera,
+      cameraCount: cfg.cameras.length,
+      cameraView: cfg.camera_view,
+      fitMode: cfg.fit_mode,
+    });
 
     this.innerHTML = `
       <ha-card>
@@ -161,15 +170,17 @@ class SmartCameraSwitcher extends HTMLElement {
   _configurePictureCard(element, camera) {
     if (!element || !camera) return;
     if (typeof element.setConfig !== 'function') {
+      this._debug('picture card not ready', { camera });
       customElements.whenDefined('hui-picture-entity-card').then(() => {
         if (element.isConnected) {
+          this._debug('picture card ready, retrying', { camera });
           this._configurePictureCard(element, camera);
         }
       });
       return;
     }
 
-    element.setConfig({
+    const childConfig = {
       type: 'picture-entity',
       entity: camera.entity,
       show_name: false,
@@ -177,8 +188,19 @@ class SmartCameraSwitcher extends HTMLElement {
       camera_view: this._config.camera_view,
       fit_mode: this._config.fit_mode,
       tap_action: { action: 'more-info' },
-    });
-    element.hass = this._hass;
+    };
+    try {
+      element.setConfig(childConfig);
+      element.hass = this._hass;
+      this._debug('picture card configured', childConfig);
+    } catch (error) {
+      console.error('smart-camera-switcher: picture card configuration failed', childConfig, error);
+    }
+  }
+
+  _debug(message, detail) {
+    if (!this._config || !this._config.debug) return;
+    console.info(`smart-camera-switcher: ${message}`, detail);
   }
 
   _escape(value) {
