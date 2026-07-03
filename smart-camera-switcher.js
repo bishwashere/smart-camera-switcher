@@ -34,6 +34,7 @@ class SmartCameraSwitcher extends HTMLElement {
       show_names: false,
       manual_timeout_seconds: 60,
       min_auto_switch_seconds: 3,
+      switch_hold_seconds: 2,
       debug: false,
       ...config,
     };
@@ -56,6 +57,7 @@ class SmartCameraSwitcher extends HTMLElement {
   disconnectedCallback() {
     this._clearManualReset();
     this._clearPendingAutoSwitch();
+    if (this._viewerSwapTimer) window.clearTimeout(this._viewerSwapTimer);
   }
 
   _desiredCameraSelection() {
@@ -137,10 +139,11 @@ class SmartCameraSwitcher extends HTMLElement {
     if (this._pendingAutoActiveId === activeId && this._pendingAutoSwitchTimer) return;
     this._clearPendingAutoSwitch();
     this._pendingAutoActiveId = activeId;
+    this._prepareViewer(activeId);
     this._debug('delaying auto switch', { activeId, waitMs: minMs });
     this._pendingAutoSwitchTimer = window.setTimeout(() => {
       const pending = this._pendingAutoActiveId;
-      this._clearPendingAutoSwitch();
+      this._clearPendingAutoSwitch(true);
       const selection = this._desiredCameraSelection();
       if (selection.source !== 'manual' && selection.id === pending) {
         this._switchActiveCamera(selection.id);
@@ -150,10 +153,11 @@ class SmartCameraSwitcher extends HTMLElement {
     }, minMs);
   }
 
-  _clearPendingAutoSwitch() {
+  _clearPendingAutoSwitch(keepPrepared = false) {
     if (this._pendingAutoSwitchTimer) window.clearTimeout(this._pendingAutoSwitchTimer);
     this._pendingAutoSwitchTimer = undefined;
     this._pendingAutoActiveId = undefined;
+    if (!keepPrepared) this._clearPreparedViewers();
   }
 
   _moreInfo(entityId) {
@@ -245,7 +249,9 @@ class SmartCameraSwitcher extends HTMLElement {
       <ha-card>
         ${cfg.title ? `<div class="header">${this._escape(cfg.title)}</div>` : ''}
         <div class="viewer" style="height:${this._escape(cfg.max_height)}">
-          <hui-picture-entity-card></hui-picture-entity-card>
+          <div class="viewer-slot active" data-camera-id="${this._escape(activeCamera.id)}">
+            <hui-picture-entity-card></hui-picture-entity-card>
+          </div>
         </div>
         <div class="thumbs">
           ${cfg.cameras
@@ -268,10 +274,25 @@ class SmartCameraSwitcher extends HTMLElement {
           smart-camera-switcher .viewer {
             overflow: hidden;
             background: var(--divider-color, rgba(127,127,127,.15));
+            position: relative;
           }
-          smart-camera-switcher .viewer hui-picture-entity-card,
-          smart-camera-switcher .viewer hui-picture-entity-card > *,
-          smart-camera-switcher .viewer > * {
+          smart-camera-switcher .viewer-slot {
+            position: absolute;
+            inset: 0;
+            transition: opacity .18s ease;
+          }
+          smart-camera-switcher .viewer-slot.active {
+            opacity: 1;
+            z-index: 2;
+          }
+          smart-camera-switcher .viewer-slot.prepared {
+            opacity: 0;
+            z-index: 1;
+            pointer-events: none;
+          }
+          smart-camera-switcher .viewer-slot hui-picture-entity-card,
+          smart-camera-switcher .viewer-slot hui-picture-entity-card > *,
+          smart-camera-switcher .viewer-slot > * {
             display: block;
             height: 100%;
           }
@@ -328,7 +349,7 @@ class SmartCameraSwitcher extends HTMLElement {
       </ha-card>`;
     this._updateDebugLog();
 
-    this._configurePictureCard(this.querySelector('.viewer hui-picture-entity-card'), activeCamera);
+    this._configurePictureCard(this.querySelector('.viewer-slot.active hui-picture-entity-card'), activeCamera);
     for (const button of this.querySelectorAll('.thumb')) {
       const camera = cfg.cameras.find((item) => item.id === button.dataset.camera);
       this._configurePictureCard(button.querySelector('hui-picture-entity-card'), camera, {
@@ -374,15 +395,64 @@ class SmartCameraSwitcher extends HTMLElement {
       return;
     }
 
-    this._renderedActiveId = camera.id;
-    this._activeChangedAt = Date.now();
     this._debug('switch active camera', { activeId: camera.id, camera });
-    const viewerCard =
-      this.querySelector('.viewer [data-smart-camera-child="true"]') ||
-      this.querySelector('.viewer hui-picture-entity-card');
-    this._configurePictureCard(viewerCard, camera);
+    const slot = this._prepareViewer(camera.id);
+    if (!slot) return;
+
+    const preparedAt = Number(slot.dataset.preparedAt || Date.now());
+    const minimumHoldMs = Math.max(0, Number(this._config.switch_hold_seconds || 0) * 1000);
+    const waitMs = Math.max(0, minimumHoldMs - (Date.now() - preparedAt));
+    if (this._viewerSwapTimer) window.clearTimeout(this._viewerSwapTimer);
+    this._viewerSwapTimer = window.setTimeout(() => {
+      this._promoteViewer(camera.id);
+    }, waitMs);
+    this._updateChildHass();
+  }
+
+  _prepareViewer(activeId) {
+    const camera = this._config.cameras.find((item) => item.id === activeId);
+    const viewer = this.querySelector('.viewer');
+    if (!camera || !viewer) return undefined;
+
+    const existing = this._viewerSlotFor(camera.id);
+    if (existing) return existing;
+
+    this._clearPreparedViewers();
+    const slot = document.createElement('div');
+    slot.className = 'viewer-slot prepared';
+    slot.dataset.cameraId = camera.id;
+    slot.dataset.preparedAt = String(Date.now());
+    slot.innerHTML = '<hui-picture-entity-card></hui-picture-entity-card>';
+    viewer.append(slot);
+    this._configurePictureCard(slot.querySelector('hui-picture-entity-card'), camera);
+    return slot;
+  }
+
+  _promoteViewer(activeId) {
+    const viewer = this.querySelector('.viewer');
+    const slot = this._viewerSlotFor(activeId);
+    if (!slot) return;
+
+    for (const other of viewer.querySelectorAll('.viewer-slot')) {
+      if (other !== slot) other.remove();
+    }
+    slot.classList.remove('prepared');
+    slot.classList.add('active');
+    this._renderedActiveId = activeId;
+    this._activeChangedAt = Date.now();
+    this._viewerSwapTimer = undefined;
     this._updateSelectorState();
     this._updateChildHass();
+  }
+
+  _clearPreparedViewers() {
+    for (const slot of this.querySelectorAll('.viewer-slot.prepared')) {
+      slot.remove();
+    }
+  }
+
+  _viewerSlotFor(cameraId) {
+    return Array.from(this.querySelectorAll('.viewer-slot')).find((slot) => slot.dataset.cameraId === cameraId);
   }
 
   _configurePictureCard(element, camera, options = {}) {
