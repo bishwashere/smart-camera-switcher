@@ -32,7 +32,6 @@ class SmartCameraSwitcher extends HTMLElement {
       thumbnail_camera_view: 'live',
       fit_mode: 'cover',
       show_names: false,
-      show_auto_control: false,
       manual_timeout_seconds: 60,
       min_auto_switch_seconds: 3,
       debug: false,
@@ -79,11 +78,6 @@ class SmartCameraSwitcher extends HTMLElement {
   _selectCamera(camera) {
     this._selectOption(camera.id);
     this._scheduleManualReset(camera.id);
-  }
-
-  _selectAuto() {
-    this._selectOption(this._config.auto_option);
-    this._clearManualReset();
   }
 
   _selectOption(option) {
@@ -196,8 +190,6 @@ class SmartCameraSwitcher extends HTMLElement {
 
     const cfg = this._config;
     const activeCamera = cfg.cameras.find((camera) => camera.id === activeId) || cfg.cameras[0];
-    const selectorState = cfg.selector_entity ? this._hass.states[cfg.selector_entity]?.state : undefined;
-    const showAuto = cfg.selector_entity && cfg.auto_option && cfg.show_auto_control !== false;
     this._renderedActiveId = activeId;
     this._renderedCameraCount = cfg.cameras.length;
     this._activeChangedAt = Date.now();
@@ -218,11 +210,6 @@ class SmartCameraSwitcher extends HTMLElement {
           <hui-picture-entity-card></hui-picture-entity-card>
         </div>
         <div class="thumbs">
-          ${
-            showAuto
-              ? `<button class="thumb auto ${selectorState === cfg.auto_option ? 'active' : ''}" data-auto="true" title="${this._escape(cfg.auto_option)}"><span>A</span></button>`
-              : ''
-          }
           ${cfg.cameras
             .map(
               (camera) => `
@@ -319,10 +306,6 @@ class SmartCameraSwitcher extends HTMLElement {
 
     this._configurePictureCard(this.querySelector('.viewer hui-picture-entity-card'), activeCamera);
     for (const button of this.querySelectorAll('.thumb')) {
-      if (button.dataset.auto === 'true') {
-        button.addEventListener('click', () => this._selectAuto());
-        continue;
-      }
       const camera = cfg.cameras.find((item) => item.id === button.dataset.camera);
       this._configurePictureCard(button.querySelector('hui-picture-entity-card'), camera, {
         aspect_ratio: '1:1',
@@ -412,13 +395,8 @@ class SmartCameraSwitcher extends HTMLElement {
   }
 
   _updateSelectorState() {
-    const selectorState = this._config.selector_entity ? this._hass.states[this._config.selector_entity]?.state : undefined;
     for (const button of this.querySelectorAll('.thumb')) {
-      if (button.dataset.auto === 'true') {
-        button.classList.toggle('active', selectorState === this._config.auto_option);
-      } else {
-        button.classList.toggle('active', button.dataset.camera === this._renderedActiveId);
-      }
+      button.classList.toggle('active', button.dataset.camera === this._renderedActiveId);
     }
   }
 

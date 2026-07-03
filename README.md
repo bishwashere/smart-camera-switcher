@@ -93,7 +93,6 @@ cameras:
 | `thumbnail_camera_view` | No | Camera view mode for the circular selectors. Defaults to `live`. Set to `auto` if you want lighter still/auto previews. |
 | `fit_mode` | No | Camera fit mode. Defaults to `cover`. |
 | `show_names` | No | Show labels over the circular camera buttons. Defaults to `false`. |
-| `show_auto_control` | No | Show an Auto selector when `selector_entity` is configured. Defaults to `false` because Auto is the normal underlying state, not a camera. |
 | `manual_timeout_seconds` | No | Return the selector to auto mode after a manual camera tap. Defaults to `60`. Set to `0` if manual selection should stay until changed. |
 | `min_auto_switch_seconds` | No | Seconds an auto-follow target must stay stable before switching, including switching back to `default_camera`. Defaults to `3`. Manual taps switch immediately. |
 
@@ -106,6 +105,8 @@ Smart Camera Switcher chooses the visible camera in this order:
 3. `default_camera`, or the first item in `cameras`, when neither helper gives a valid camera ID.
 
 So if you want a fallback default camera, set `default_camera` or put it first in the `cameras` list.
+
+The card does not render an Auto button. Auto is the normal helper state behind the scenes; the visible circular buttons are only your configured cameras.
 
 ## Optional Helper
 
