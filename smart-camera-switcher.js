@@ -82,6 +82,8 @@ class SmartCameraSwitcher extends HTMLElement {
   }
 
   _selectCamera(camera) {
+    this._clearPendingAutoSwitch();
+    this._switchActiveCamera(camera.id);
     this._selectOption(camera.id);
     this._scheduleManualReset(camera.id);
   }
