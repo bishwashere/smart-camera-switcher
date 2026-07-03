@@ -113,7 +113,8 @@ class SmartCameraSwitcher extends HTMLElement {
             background: var(--divider-color, rgba(127,127,127,.15));
           }
           smart-camera-switcher .viewer hui-picture-entity-card,
-          smart-camera-switcher .viewer hui-picture-entity-card > * {
+          smart-camera-switcher .viewer hui-picture-entity-card > *,
+          smart-camera-switcher .viewer > * {
             display: block;
             height: 100%;
           }
@@ -139,7 +140,8 @@ class SmartCameraSwitcher extends HTMLElement {
             box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color) 25%, transparent);
           }
           smart-camera-switcher .thumb hui-picture-entity-card,
-          smart-camera-switcher .thumb hui-picture-entity-card > * {
+          smart-camera-switcher .thumb hui-picture-entity-card > *,
+          smart-camera-switcher .thumb > * {
             display: block;
             width: 100%;
             height: 100%;
@@ -169,6 +171,33 @@ class SmartCameraSwitcher extends HTMLElement {
 
   _configurePictureCard(element, camera) {
     if (!element || !camera) return;
+    const childConfig = {
+      type: 'picture-entity',
+      entity: camera.entity,
+      show_name: false,
+      show_state: false,
+      camera_view: this._config.camera_view,
+      fit_mode: this._config.fit_mode,
+      tap_action: { action: 'more-info' },
+    };
+
+    if (typeof window.loadCardHelpers === 'function') {
+      this._debug('creating picture card with helpers', childConfig);
+      window
+        .loadCardHelpers()
+        .then((helpers) => {
+          if (!element.isConnected) return;
+          const card = helpers.createCardElement(childConfig);
+          card.hass = this._hass;
+          element.replaceWith(card);
+          this._debug('picture card configured', childConfig);
+        })
+        .catch((error) => {
+          console.error('smart-camera-switcher: picture card helper failed', childConfig, error);
+        });
+      return;
+    }
+
     if (typeof element.setConfig !== 'function') {
       this._debug('picture card not ready', { camera });
       customElements.whenDefined('hui-picture-entity-card').then(() => {
@@ -180,15 +209,6 @@ class SmartCameraSwitcher extends HTMLElement {
       return;
     }
 
-    const childConfig = {
-      type: 'picture-entity',
-      entity: camera.entity,
-      show_name: false,
-      show_state: false,
-      camera_view: this._config.camera_view,
-      fit_mode: this._config.fit_mode,
-      tap_action: { action: 'more-info' },
-    };
     try {
       element.setConfig(childConfig);
       element.hass = this._hass;
