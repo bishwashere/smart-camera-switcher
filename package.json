@@ -1,0 +1,19 @@
+{
+  "name": "smart-camera-switcher",
+  "version": "0.1.0",
+  "description": "Home Assistant Lovelace card for switching between live camera feeds.",
+  "main": "dist/smart-camera-switcher.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "check": "node --check dist/smart-camera-switcher.js"
+  },
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "camera",
+    "custom-card"
+  ],
+  "license": "MIT"
+}
