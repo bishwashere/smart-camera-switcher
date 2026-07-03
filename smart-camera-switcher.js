@@ -25,6 +25,7 @@ class SmartCameraSwitcher extends HTMLElement {
       title: 'Smart Camera',
       active_entity: undefined,
       selector_entity: undefined,
+      default_camera: undefined,
       auto_option: 'auto',
       max_height: '25vh',
       camera_view: 'live',
@@ -64,7 +65,15 @@ class SmartCameraSwitcher extends HTMLElement {
       return { id: active, source: 'auto' };
     }
 
-    return { id: cfg.cameras[0].id, source: 'fallback' };
+    return { id: this._defaultCameraId(), source: 'fallback' };
+  }
+
+  _defaultCameraId() {
+    const cfg = this._config;
+    if (cfg.default_camera && cfg.cameras.some((camera) => camera.id === cfg.default_camera)) {
+      return cfg.default_camera;
+    }
+    return cfg.cameras[0].id;
   }
 
   _selectCamera(camera) {
@@ -116,10 +125,8 @@ class SmartCameraSwitcher extends HTMLElement {
 
   _scheduleAutoSwitch(activeId) {
     const minMs = Math.max(0, Number(this._config.min_auto_switch_seconds || 0) * 1000);
-    const elapsed = Date.now() - (this._activeChangedAt || 0);
-    const waitMs = Math.max(0, minMs - elapsed);
 
-    if (waitMs === 0) {
+    if (minMs === 0) {
       this._clearPendingAutoSwitch();
       this._switchActiveCamera(activeId);
       return;
@@ -128,7 +135,7 @@ class SmartCameraSwitcher extends HTMLElement {
     if (this._pendingAutoActiveId === activeId && this._pendingAutoSwitchTimer) return;
     this._clearPendingAutoSwitch();
     this._pendingAutoActiveId = activeId;
-    this._debug('delaying auto switch', { activeId, waitMs });
+    this._debug('delaying auto switch', { activeId, waitMs: minMs });
     this._pendingAutoSwitchTimer = window.setTimeout(() => {
       const pending = this._pendingAutoActiveId;
       this._clearPendingAutoSwitch();
@@ -138,7 +145,7 @@ class SmartCameraSwitcher extends HTMLElement {
       } else {
         this._update();
       }
-    }, waitMs);
+    }, minMs);
   }
 
   _clearPendingAutoSwitch() {

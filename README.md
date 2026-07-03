@@ -86,6 +86,7 @@ cameras:
 | `selector_entity` | No | An `input_select` used for manual camera selection. |
 | `auto_option` | No | The selector option that means auto-follow mode. Defaults to `auto`. |
 | `active_entity` | No | A sensor whose state matches one of the camera IDs. Useful for auto-follow behavior. |
+| `default_camera` | No | Camera ID to show when no valid auto camera is active. Defaults to the first camera in `cameras`. |
 | `title` | No | Card title. |
 | `max_height` | No | Height of the main camera viewer, for example `25vh` or `320px`. |
 | `camera_view` | No | Camera view mode. Defaults to `live`. |
@@ -94,7 +95,7 @@ cameras:
 | `show_names` | No | Show labels over the circular camera buttons. Defaults to `false`. |
 | `show_auto_control` | No | Show an Auto selector when `selector_entity` is configured. Defaults to `true`. |
 | `manual_timeout_seconds` | No | Return the selector to auto mode after a manual camera tap. Defaults to `0`, which means manual selection stays until changed. |
-| `min_auto_switch_seconds` | No | Minimum time to keep the current auto-selected camera visible before auto-follow switches to another camera. Defaults to `3`. Manual taps switch immediately. |
+| `min_auto_switch_seconds` | No | Seconds an auto-follow target must stay stable before switching, including switching back to `default_camera`. Defaults to `3`. Manual taps switch immediately. |
 
 ## Camera Selection Priority
 
@@ -102,9 +103,9 @@ Smart Camera Switcher chooses the visible camera in this order:
 
 1. `selector_entity`, when it exists and its state is not `auto`. This is the manual override.
 2. `active_entity`, when it exists and its state matches one of your camera IDs. This is useful for automatic camera selection.
-3. The first item in `cameras`, when neither helper gives a valid camera ID.
+3. `default_camera`, or the first item in `cameras`, when neither helper gives a valid camera ID.
 
-So if you want a fallback default camera, put it first in the `cameras` list.
+So if you want a fallback default camera, set `default_camera` or put it first in the `cameras` list.
 
 ## Optional Helper
 
