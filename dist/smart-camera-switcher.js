@@ -32,6 +32,7 @@ class SmartCameraSwitcher extends HTMLElement {
       debug: false,
       ...config,
     };
+    this._debugLines = [];
     this._debug('configured', this._config);
   }
 
@@ -102,6 +103,7 @@ class SmartCameraSwitcher extends HTMLElement {
             )
             .join('')}
         </div>
+        ${cfg.debug ? '<pre class="debug-log"></pre>' : ''}
         <style>
           smart-camera-switcher .header {
             padding: 12px 16px 8px;
@@ -154,8 +156,18 @@ class SmartCameraSwitcher extends HTMLElement {
             color: white;
             background: rgba(0,0,0,.5);
           }
+          smart-camera-switcher .debug-log {
+            margin: 0;
+            padding: 8px 12px 12px;
+            max-height: 160px;
+            overflow: auto;
+            font-size: 11px;
+            white-space: pre-wrap;
+            color: var(--secondary-text-color);
+          }
         </style>
       </ha-card>`;
+    this._updateDebugLog();
 
     this._configurePictureCard(this.querySelector('.viewer hui-picture-entity-card'), activeCamera);
     for (const button of this.querySelectorAll('.thumb')) {
@@ -220,7 +232,26 @@ class SmartCameraSwitcher extends HTMLElement {
 
   _debug(message, detail) {
     if (!this._config || !this._config.debug) return;
+    this._debugLines = this._debugLines || [];
+    const text = `${new Date().toLocaleTimeString()} ${message}${detail ? ` ${this._safeJson(detail)}` : ''}`;
+    this._debugLines.push(text);
+    this._debugLines = this._debugLines.slice(-30);
+    this._updateDebugLog();
     console.info(`smart-camera-switcher: ${message}`, detail);
+  }
+
+  _updateDebugLog() {
+    const log = this.querySelector('.debug-log');
+    if (!log) return;
+    log.textContent = (this._debugLines || []).join('\n');
+  }
+
+  _safeJson(value) {
+    try {
+      return JSON.stringify(value);
+    } catch (_error) {
+      return String(value);
+    }
   }
 
   _escape(value) {
