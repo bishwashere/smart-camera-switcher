@@ -160,6 +160,15 @@ class SmartCameraSwitcher extends HTMLElement {
 
   _configurePictureCard(element, camera) {
     if (!element || !camera) return;
+    if (typeof element.setConfig !== 'function') {
+      customElements.whenDefined('hui-picture-entity-card').then(() => {
+        if (element.isConnected) {
+          this._configurePictureCard(element, camera);
+        }
+      });
+      return;
+    }
+
     element.setConfig({
       type: 'picture-entity',
       entity: camera.entity,
