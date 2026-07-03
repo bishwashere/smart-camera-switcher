@@ -112,6 +112,8 @@ So if you want a fallback default camera, set `default_camera` or put it first i
 
 The card does not render an Auto button. Auto is the normal helper state behind the scenes; the visible circular buttons are only your configured cameras.
 
+If the example entities are left unchanged or a configured entity does not exist, the card shows a setup message instead of an empty camera viewer.
+
 ## Optional Helper
 
 For manual selection, create an `input_select` whose options match your camera IDs.

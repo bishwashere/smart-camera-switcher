@@ -43,6 +43,12 @@ class SmartCameraSwitcher extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    const setupMessage = this._setupMessage();
+    if (setupMessage) {
+      this._renderNotice(setupMessage);
+      return;
+    }
+
     this._scheduleManualReset();
     this._update();
   }
@@ -152,6 +158,36 @@ class SmartCameraSwitcher extends HTMLElement {
     const event = new Event('hass-more-info', { bubbles: true, composed: true });
     event.detail = { entityId };
     this.dispatchEvent(event);
+  }
+
+  _setupMessage() {
+    if (!this._hass || !this._config) return undefined;
+
+    const missingCameras = this._config.cameras.filter((camera) => !this._hass.states[camera.entity]);
+    if (missingCameras.length > 0) {
+      const exampleEntities = ['camera.front_door', 'camera.driveway'];
+      const hasExampleCamera = this._config.cameras.some((camera) => exampleEntities.includes(camera.entity));
+      if (hasExampleCamera) {
+        return 'Replace the example camera entities with your real Home Assistant camera entities.';
+      }
+      return `Camera entity not found: ${missingCameras.map((camera) => camera.entity).join(', ')}`;
+    }
+
+    if (this._config.selector_entity && !this._hass.states[this._config.selector_entity]) {
+      if (this._config.selector_entity === 'input_select.camera_selector') {
+        return 'Replace the example selector entity input_select.camera_selector, or remove selector_entity.';
+      }
+      return `Selector entity ${this._config.selector_entity} was not found.`;
+    }
+
+    if (this._config.active_entity && !this._hass.states[this._config.active_entity]) {
+      if (this._config.active_entity === 'sensor.active_camera_example') {
+        return 'Replace the example active entity sensor.active_camera_example, or remove active_entity.';
+      }
+      return `Active camera entity ${this._config.active_entity} was not found.`;
+    }
+
+    return undefined;
   }
 
   _update() {
@@ -277,20 +313,6 @@ class SmartCameraSwitcher extends HTMLElement {
             color: white;
             background: rgba(0,0,0,.5);
           }
-          smart-camera-switcher .thumb.auto {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--primary-text-color);
-          }
-          smart-camera-switcher .thumb.auto span {
-            position: static;
-            padding: 0;
-            font-size: 13px;
-            font-weight: 600;
-            color: inherit;
-            background: transparent;
-          }
           smart-camera-switcher .debug-log {
             margin: 0;
             padding: 8px 12px 12px;
@@ -319,6 +341,27 @@ class SmartCameraSwitcher extends HTMLElement {
         this._moreInfo(camera.entity);
       });
     }
+  }
+
+  _renderNotice(message) {
+    this._hasRendered = false;
+    this.innerHTML = `
+      <ha-card>
+        ${this._config.title ? `<div class="header">${this._escape(this._config.title)}</div>` : ''}
+        <div class="notice">${this._escape(message)}</div>
+        <style>
+          smart-camera-switcher .header {
+            padding: 12px 16px 8px;
+            font-size: 16px;
+            font-weight: 500;
+          }
+          smart-camera-switcher .notice {
+            padding: 16px;
+            color: var(--secondary-text-color);
+            line-height: 1.4;
+          }
+        </style>
+      </ha-card>`;
   }
 
   _switchActiveCamera(activeId) {
