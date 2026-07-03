@@ -34,28 +34,28 @@ type: module
 ```yaml
 type: custom:smart-camera-switcher
 title: Smart Camera
-active_entity: sensor.active_camera
-selector_entity: input_select.smart_camera_selected
+active_entity: sensor.active_camera_example
+selector_entity: input_select.camera_selector
 max_height: 25vh
 cameras:
-  - id: cam1
-    entity: camera.cam1_fluent
-    name: Cam 1
-  - id: cam2
-    entity: camera.cam2_fluent
-    name: Cam 2
-  - id: cam3
-    entity: camera.cam3_fluent
-    name: Cam 3
-  - id: cam4
-    entity: camera.cam4_fluent
-    name: Cam 4
-  - id: cam5
-    entity: camera.cam5_fluent
-    name: Cam 5
-  - id: cam6
-    entity: camera.cam6_fluent
-    name: Cam 6
+  - id: front_door
+    entity: camera.front_door
+    name: Front Door
+  - id: driveway
+    entity: camera.driveway
+    name: Driveway
+  - id: back_yard
+    entity: camera.back_yard
+    name: Back Yard
+  - id: garage
+    entity: camera.garage
+    name: Garage
+  - id: side_yard
+    entity: camera.side_yard
+    name: Side Yard
+  - id: patio
+    entity: camera.patio
+    name: Patio
 ```
 
 ## Helper entities used by the original setup
@@ -64,16 +64,16 @@ The original dashboard used an `input_select` for manual selection and a templat
 
 ```yaml
 input_select:
-  smart_camera_selected:
-    name: Smart Camera Selection
+  camera_selector:
+    name: Camera Selection
     options:
       - auto
-      - cam1
-      - cam2
-      - cam3
-      - cam4
-      - cam5
-      - cam6
+      - front_door
+      - driveway
+      - back_yard
+      - garage
+      - side_yard
+      - patio
     initial: auto
     icon: mdi:cctv
 ```

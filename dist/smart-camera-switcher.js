@@ -2,11 +2,11 @@ class SmartCameraSwitcher extends HTMLElement {
   static getStubConfig() {
     return {
       title: 'Smart Camera',
-      active_entity: 'sensor.active_camera',
-      selector_entity: 'input_select.smart_camera_selected',
+      active_entity: 'sensor.active_camera_example',
+      selector_entity: 'input_select.camera_selector',
       cameras: [
-        { id: 'cam1', entity: 'camera.cam1_fluent', name: 'Cam 1' },
-        { id: 'cam2', entity: 'camera.cam2_fluent', name: 'Cam 2' },
+        { id: 'front_door', entity: 'camera.front_door', name: 'Front Door' },
+        { id: 'driveway', entity: 'camera.driveway', name: 'Driveway' },
       ],
     };
   }
