@@ -172,7 +172,7 @@ class SmartCameraSwitcher extends HTMLElement {
     this._configurePictureCard(this.querySelector('.viewer hui-picture-entity-card'), activeCamera);
     for (const button of this.querySelectorAll('.thumb')) {
       const camera = cfg.cameras.find((item) => item.id === button.dataset.camera);
-      this._configurePictureCard(button.querySelector('hui-picture-entity-card'), camera);
+      this._configurePictureCard(button.querySelector('hui-picture-entity-card'), camera, { aspect_ratio: '1:1' });
       button.addEventListener('click', () => this._selectCamera(camera));
       button.addEventListener('contextmenu', (event) => {
         event.preventDefault();
@@ -181,7 +181,7 @@ class SmartCameraSwitcher extends HTMLElement {
     }
   }
 
-  _configurePictureCard(element, camera) {
+  _configurePictureCard(element, camera, options = {}) {
     if (!element || !camera) return;
     const childConfig = {
       type: 'picture-entity',
@@ -191,6 +191,7 @@ class SmartCameraSwitcher extends HTMLElement {
       camera_view: this._config.camera_view,
       fit_mode: this._config.fit_mode,
       tap_action: { action: 'more-info' },
+      ...options,
     };
 
     if (typeof window.loadCardHelpers === 'function') {
@@ -215,7 +216,7 @@ class SmartCameraSwitcher extends HTMLElement {
       customElements.whenDefined('hui-picture-entity-card').then(() => {
         if (element.isConnected) {
           this._debug('picture card ready, retrying', { camera });
-          this._configurePictureCard(element, camera);
+          this._configurePictureCard(element, camera, options);
         }
       });
       return;
