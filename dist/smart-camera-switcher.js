@@ -186,7 +186,9 @@ class SmartCameraSwitcher extends HTMLElement {
   }
 }
 
-customElements.define('smart-camera-switcher', SmartCameraSwitcher);
+if (!customElements.get('smart-camera-switcher')) {
+  customElements.define('smart-camera-switcher', SmartCameraSwitcher);
+}
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'smart-camera-switcher',
