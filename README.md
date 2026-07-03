@@ -94,6 +94,7 @@ cameras:
 | `show_names` | No | Show labels over the circular camera buttons. Defaults to `false`. |
 | `show_auto_control` | No | Show an Auto selector when `selector_entity` is configured. Defaults to `true`. |
 | `manual_timeout_seconds` | No | Return the selector to auto mode after a manual camera tap. Defaults to `0`, which means manual selection stays until changed. |
+| `min_auto_switch_seconds` | No | Minimum time to keep the current auto-selected camera visible before auto-follow switches to another camera. Defaults to `3`. Manual taps switch immediately. |
 
 ## Camera Selection Priority
 
