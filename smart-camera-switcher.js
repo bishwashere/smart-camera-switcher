@@ -27,6 +27,7 @@ class SmartCameraSwitcher extends HTMLElement {
       selector_entity: undefined,
       max_height: '25vh',
       camera_view: 'live',
+      thumbnail_camera_view: 'auto',
       fit_mode: 'cover',
       show_names: false,
       debug: false,
@@ -97,6 +98,7 @@ class SmartCameraSwitcher extends HTMLElement {
       activeCamera,
       cameraCount: cfg.cameras.length,
       cameraView: cfg.camera_view,
+      thumbnailCameraView: cfg.thumbnail_camera_view,
       fitMode: cfg.fit_mode,
     });
 
@@ -186,7 +188,10 @@ class SmartCameraSwitcher extends HTMLElement {
     this._configurePictureCard(this.querySelector('.viewer hui-picture-entity-card'), activeCamera);
     for (const button of this.querySelectorAll('.thumb')) {
       const camera = cfg.cameras.find((item) => item.id === button.dataset.camera);
-      this._configurePictureCard(button.querySelector('hui-picture-entity-card'), camera, { aspect_ratio: '1:1' });
+      this._configurePictureCard(button.querySelector('hui-picture-entity-card'), camera, {
+        aspect_ratio: '1:1',
+        camera_view: cfg.thumbnail_camera_view,
+      });
       button.addEventListener('click', () => this._selectCamera(camera));
       button.addEventListener('contextmenu', (event) => {
         event.preventDefault();

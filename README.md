@@ -88,6 +88,7 @@ cameras:
 | `title` | No | Card title. |
 | `max_height` | No | Height of the main camera viewer, for example `25vh` or `320px`. |
 | `camera_view` | No | Camera view mode. Defaults to `live`. |
+| `thumbnail_camera_view` | No | Camera view mode for the circular selectors. Defaults to `auto` so only the main viewer opens a live stream. |
 | `fit_mode` | No | Camera fit mode. Defaults to `cover`. |
 | `show_names` | No | Show labels over the circular camera buttons. Defaults to `false`. |
 
