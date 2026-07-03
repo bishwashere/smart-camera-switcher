@@ -23,7 +23,7 @@ Smart Camera Switcher is a Home Assistant Lovelace custom card that shows one ma
 
 ### Manual install
 
-1. Download `dist/smart-camera-switcher.js` from this repository.
+1. Download `smart-camera-switcher.js` from this repository.
 2. Copy it to your Home Assistant `www` folder as:
 
    `/config/www/smart-camera-switcher.js`
@@ -126,7 +126,7 @@ input_select:
 Copy the current development file into Home Assistant:
 
 ```bash
-cp dist/smart-camera-switcher.js /config/www/smart-camera-switcher.js
+cp smart-camera-switcher.js /config/www/smart-camera-switcher.js
 ```
 
 Then add or update the Lovelace resource:
