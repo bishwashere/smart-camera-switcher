@@ -160,7 +160,6 @@ class SmartCameraSwitcher extends HTMLElement {
 
   _configurePictureCard(element, camera) {
     if (!element || !camera) return;
-    element.hass = this._hass;
     element.setConfig({
       type: 'picture-entity',
       entity: camera.entity,
@@ -170,6 +169,7 @@ class SmartCameraSwitcher extends HTMLElement {
       fit_mode: this._config.fit_mode,
       tap_action: { action: 'more-info' },
     });
+    element.hass = this._hass;
   }
 
   _escape(value) {
