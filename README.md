@@ -1,35 +1,55 @@
 # Smart Camera Switcher
 
-Smart Camera Switcher is a Home Assistant Lovelace custom card for showing one active camera feed with circular camera selectors underneath it.
+Smart Camera Switcher is a Home Assistant Lovelace custom card that shows one active camera feed with circular camera selectors underneath it.
 
-This card can be installed manually or through HACS as a custom repository.
+## Installation
 
-## HACS custom repository install
+### HACS custom repository
 
-1. In HACS, open **Custom repositories**.
-2. Add `https://github.com/bishwashere/smart-camera-switcher`.
-3. Select category **Lovelace**.
-4. Install the card.
-5. Add the card to your dashboard using `custom:smart-camera-switcher`.
+1. In Home Assistant, open **HACS**.
+2. Open **Custom repositories**.
+3. Add this repository URL:
 
-After install, the resource should point to the installed JavaScript file managed by HACS.
+   `https://github.com/bishwashere/smart-camera-switcher`
 
-## Local install while developing
+4. Select category **Lovelace**.
+5. Install **Smart Camera Switcher**.
+6. Refresh your browser.
 
-Copy `dist/smart-camera-switcher.js` into Home Assistant:
+### Manual install
 
-```bash
-cp dist/smart-camera-switcher.js /config/www/smart-camera-switcher.js
-```
+1. Download `dist/smart-camera-switcher.js` from this repository.
+2. Copy it to your Home Assistant `www` folder as:
 
-Add it as a Lovelace resource:
+   `/config/www/smart-camera-switcher.js`
+
+3. Add it as a Lovelace resource:
 
 ```yaml
 url: /local/smart-camera-switcher.js
 type: module
 ```
 
-## Example card
+4. Refresh your browser.
+
+## Basic Example
+
+```yaml
+type: custom:smart-camera-switcher
+title: Smart Camera
+selector_entity: input_select.camera_selector
+cameras:
+  - id: front_door
+    entity: camera.front_door
+    name: Front Door
+  - id: driveway
+    entity: camera.driveway
+    name: Driveway
+```
+
+## Auto-Selected Camera Example
+
+Use `active_entity` when another sensor decides which camera should be shown. If `selector_entity` is set to anything other than `auto`, manual selection wins.
 
 ```yaml
 type: custom:smart-camera-switcher
@@ -50,17 +70,25 @@ cameras:
   - id: garage
     entity: camera.garage
     name: Garage
-  - id: side_yard
-    entity: camera.side_yard
-    name: Side Yard
-  - id: patio
-    entity: camera.patio
-    name: Patio
 ```
 
-## Helper entities used by the original setup
+## Configuration
 
-The original dashboard used an `input_select` for manual selection and a template sensor for motion-following auto selection. These helpers stay in Home Assistant config for now.
+| Option | Required | Description |
+| --- | --- | --- |
+| `type` | Yes | Must be `custom:smart-camera-switcher`. |
+| `cameras` | Yes | List of camera objects with `id`, `entity`, and optional `name`. |
+| `selector_entity` | No | An `input_select` used for manual camera selection. |
+| `active_entity` | No | A sensor whose state matches one of the camera IDs. Useful for auto-follow behavior. |
+| `title` | No | Card title. |
+| `max_height` | No | Height of the main camera viewer, for example `25vh` or `320px`. |
+| `camera_view` | No | Camera view mode. Defaults to `live`. |
+| `fit_mode` | No | Camera fit mode. Defaults to `cover`. |
+| `show_names` | No | Show labels over the circular camera buttons. Defaults to `false`. |
+
+## Optional Helper
+
+For manual selection, create an `input_select` whose options match your camera IDs.
 
 ```yaml
 input_select:
@@ -72,15 +100,30 @@ input_select:
       - driveway
       - back_yard
       - garage
-      - side_yard
-      - patio
     initial: auto
     icon: mdi:cctv
 ```
 
-## Status
+---
 
-- Local repo scaffolded
-- Card extracted into standalone JS
-- HACS custom repository metadata added
-- Needs testing in the live dashboard before release packaging
+## Local Development
+
+Copy the current development file into Home Assistant:
+
+```bash
+cp dist/smart-camera-switcher.js /config/www/smart-camera-switcher.js
+```
+
+Then add or update the Lovelace resource:
+
+```yaml
+url: /local/smart-camera-switcher.js
+type: module
+```
+
+## Project Status
+
+- Standalone JavaScript custom card
+- HACS custom repository metadata included
+- Tested in a live Home Assistant dashboard
+- Visual editor and full build pipeline are not included yet
