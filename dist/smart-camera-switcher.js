@@ -1,4 +1,4 @@
-class SmartCameraSwitcher extends HTMLElement {
+class SmartCameraSwitcherTest extends HTMLElement {
   static getStubConfig() {
     return {
       title: 'Smart Camera',
@@ -21,6 +21,10 @@ class SmartCameraSwitcher extends HTMLElement {
       }
     }
 
+    this._clearPendingAutoSwitch();
+    this._clearManualIntent();
+    this._manualReturnDefaultUntil = undefined;
+    this._unreadyAutoTarget = undefined;
     this._config = {
       title: 'Smart Camera',
       active_entity: undefined,
@@ -38,6 +42,7 @@ class SmartCameraSwitcher extends HTMLElement {
       debug: false,
       ...config,
     };
+    this._setPreviewPhase('auto');
     this._debugLines = [];
     this._debug('configured', this._config);
   }
@@ -46,22 +51,30 @@ class SmartCameraSwitcher extends HTMLElement {
     this._hass = hass;
     const setupMessage = this._setupMessage();
     if (setupMessage) {
+      this._setPreviewPhase('auto');
+      this._clearPendingAutoSwitch();
+      this._clearManualIntent();
       this._renderNotice(setupMessage);
       return;
     }
 
-    this._scheduleManualReset();
+    this._ackManualIntent();
     this._update();
   }
 
   disconnectedCallback() {
     this._clearManualReset();
+    this._manualReturnDefaultUntil = undefined;
+    this._clearManualIntent();
     this._clearPendingAutoSwitch();
+    this._unreadyAutoTarget = undefined;
     if (this._viewerSwapTimer) window.clearTimeout(this._viewerSwapTimer);
+    this._viewerSwapTimer = undefined;
   }
 
   _desiredCameraSelection() {
     const cfg = this._config;
+    if (this._manualIntent) return { id: this._manualIntent.id, source: 'manual' };
     const manual = cfg.selector_entity ? this._hass.states[cfg.selector_entity]?.state : undefined;
     if (manual && manual !== cfg.auto_option && cfg.cameras.some((camera) => camera.id === manual)) {
       return { id: manual, source: 'manual' };
@@ -84,10 +97,95 @@ class SmartCameraSwitcher extends HTMLElement {
   }
 
   _selectCamera(camera) {
-    this._clearPendingAutoSwitch();
-    this._switchActiveCamera(camera.id);
+    this._manualReturnDefaultUntil = undefined;
+    this._unreadyAutoTarget = undefined;
+    const current = this._pendingAutoAttempt;
+    if (current?.kind !== 'manual' || current.id !== camera.id) {
+      this._clearPendingAutoSwitch();
+      this._clearManualReset();
+      if (this._viewerSwapTimer) window.clearTimeout(this._viewerSwapTimer);
+      this._viewerSwapTimer = undefined;
+      this._clearManualIntent();
+      const selector = this._config.selector_entity;
+      if (selector) {
+        const intent = { id: camera.id, selector };
+        this._manualIntent = intent;
+        // Keep the latest tap authoritative while an old selector echo is in flight.
+        // After the two-second switch deadline, allow a short bounded ack grace.
+        intent.timer = window.setTimeout(() => {
+          if (this._manualIntent !== intent) return;
+          this._clearManualIntent();
+          this._update();
+        }, 3000);
+      }
+      this._setPreviewPhase('waiting');
+      if (camera.id !== this._renderedActiveId) this._showManualPreview(camera.id);
+      this._startViewerAttempt(camera.id, 'manual');
+    }
     this._selectOption(camera.id);
-    this._scheduleManualReset(camera.id);
+    this._ackManualIntent();
+  }
+
+  _setPreviewPhase(phase) {
+    if (this.dataset.cameraPreviewPhase === phase) return;
+    this.dataset.cameraPreviewPhase = phase;
+    this.dataset.cameraPreviewPhaseTime = String(Math.round(performance.now()));
+  }
+
+  _showManualPreview(id) {
+    const thumbs = Array.from(this.querySelectorAll('.thumb'));
+    const thumbnail = thumbs.find(button => button.dataset.camera === id);
+    const viewer = this.querySelector('.viewer');
+    if (!thumbnail || !viewer) return;
+
+    const sources = this._cameraMediaIn(thumbnail);
+    for (const source of [...sources.filter(x => x.tagName === 'VIDEO'), ...sources.filter(x => x.tagName === 'IMG')]) {
+      const isVideo = source.tagName === 'VIDEO';
+      const w = isVideo ? source.videoWidth : source.naturalWidth;
+      const h = isVideo ? source.videoHeight : source.naturalHeight;
+      if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0 ||
+          (isVideo ? source.readyState < 2 : !source.complete)) continue;
+      try {
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(1, 1280 / Math.max(w, h));
+        canvas.width = Math.max(1, Math.round(w * scale));
+        canvas.height = Math.max(1, Math.round(h * scale));
+        const graphics = canvas.getContext('2d');
+        if (!graphics) continue;
+        // Paint the already-loaded source locally; no pixel readback, export,
+        // URL assignment, extra media request or durable storage.
+        graphics.drawImage(source, 0, 0, canvas.width, canvas.height);
+        canvas.className = 'manual-preview';
+        canvas.style.objectFit = ['contain', 'cover', 'fill', 'none', 'scale-down'].includes(this._config.fit_mode)
+          ? this._config.fit_mode : 'cover';
+        canvas.setAttribute('aria-hidden', 'true');
+        viewer.append(canvas);
+        this._manualPreview = canvas;
+        this._setPreviewPhase('thumbnail');
+        return;
+      } catch {
+        // Unavailable/undrawable thumbnail: try its other already-loaded media.
+      }
+    }
+  }
+
+  _clearManualPreview() {
+    const canvas = this._manualPreview;
+    this._manualPreview = undefined;
+    if (!canvas) return;
+    canvas.remove();
+    canvas.width = canvas.height = 0;
+  }
+
+  _ackManualIntent() {
+    const intent = this._manualIntent;
+    if (!intent || (this._pendingAutoAttempt?.kind === 'manual' && !this._pendingAutoAttempt.promoted)) return;
+    if (this._hass.states[intent.selector]?.state === intent.id) this._clearManualIntent();
+  }
+
+  _clearManualIntent() {
+    if (this._manualIntent) window.clearTimeout(this._manualIntent.timer);
+    this._manualIntent = undefined;
   }
 
   _selectOption(option) {
@@ -116,7 +214,12 @@ class SmartCameraSwitcher extends HTMLElement {
     this._manualResetOption = manual;
     this._manualResetTimer = window.setTimeout(() => {
       const current = this._hass?.states[cfg.selector_entity]?.state;
-      if (current === manual) this._selectOption(cfg.auto_option);
+      if (current === manual) {
+        // The manual viewing window already elapsed. On the ensuing auto
+        // selector acknowledgement, don't add the ordinary idle debounce.
+        this._manualReturnDefaultUntil = performance.now() + 2000;
+        this._selectOption(cfg.auto_option);
+      }
       this._clearManualReset();
     }, timeout * 1000);
   }
@@ -128,35 +231,208 @@ class SmartCameraSwitcher extends HTMLElement {
   }
 
   _scheduleAutoSwitch(activeId) {
-    const minMs = Math.max(0, Number(this._config.min_auto_switch_seconds || 0) * 1000);
+    if ((this._pendingAutoAttempt?.id === activeId && this._pendingAutoAttempt.kind === 'motion') ||
+        this._unreadyAutoTarget === activeId) return;
+    this._clearPendingAutoSwitch();
+    this._startViewerAttempt(activeId, 'motion');
+  }
 
-    if (minMs === 0) {
-      this._clearPendingAutoSwitch();
+  _startViewerAttempt(activeId, kind) {
+    const until = performance.now() + 2000;
+    const slot = this._prepareViewer(activeId);
+    if (!slot) {
+      if (kind === 'manual') this._clearManualPreview();
+      return;
+    }
+    const attempt = { id: activeId, slot, until, kind };
+    this._pendingAutoAttempt = attempt;
+    if (kind === 'manual' && this._renderedActiveId === activeId) {
+      attempt.promoted = true;
+      attempt.visibleAt = performance.now();
+    } else {
+      attempt.deadline = window.setTimeout(() => this._expireAutoAttempt(attempt), Math.max(0, until - performance.now()));
+    }
+    this._watchAutoVideo(attempt);
+  }
+
+  _scheduleFallbackSwitch(activeId) {
+    if (this._pendingAutoAttempt?.id === activeId && this._pendingAutoAttempt.kind === 'fallback') return;
+    this._clearPendingAutoSwitch();
+    const delay = Math.max(0, Number(this._config.min_auto_switch_seconds || 0) * 1000);
+    if (delay === 0) {
       this._switchActiveCamera(activeId);
       return;
     }
-
-    if (this._pendingAutoActiveId === activeId && this._pendingAutoSwitchTimer) return;
-    this._clearPendingAutoSwitch();
-    this._pendingAutoActiveId = activeId;
     this._prepareViewer(activeId);
-    this._debug('delaying auto switch', { activeId, waitMs: minMs });
-    this._pendingAutoSwitchTimer = window.setTimeout(() => {
-      const pending = this._pendingAutoActiveId;
-      this._clearPendingAutoSwitch(true);
-      const selection = this._desiredCameraSelection();
-      if (selection.source !== 'manual' && selection.id === pending) {
-        this._switchActiveCamera(selection.id);
+    const attempt = { id: activeId, kind: 'fallback' };
+    this._pendingAutoAttempt = attempt;
+    attempt.deadline = window.setTimeout(() => {
+      if (this._pendingAutoAttempt !== attempt) return;
+      const choice = this._desiredCameraSelection();
+      if ((choice.source === 'fallback' ||
+          (choice.source === 'auto' && choice.id === this._defaultCameraId())) && choice.id === activeId) {
+        this._clearPendingAutoSwitch(true);
+        this._switchActiveCamera(activeId);
       } else {
+        this._clearPendingAutoSwitch();
         this._update();
       }
-    }, minMs);
+    }, delay);
+  }
+
+  _expireAutoAttempt(attempt) {
+    if (this._pendingAutoAttempt !== attempt) return;
+    if (attempt.kind === 'manual') {
+      this._promoteManualForObservation(attempt);
+      return;
+    }
+    // Do not reload the same failed stream on every unrelated HA state update.
+    this._unreadyAutoTarget = attempt.id;
+    this._clearPendingAutoSwitch();
+  }
+
+  _cameraMediaIn(root) {
+    const media = [];
+    const pending = [root];
+    while (pending.length) {
+      const node = pending.pop();
+      if (node.tagName === 'VIDEO' || node.tagName === 'IMG') media.push(node);
+      if (node.shadowRoot) pending.push(node.shadowRoot);
+      for (let i = (node.children?.length || 0) - 1; i >= 0; i--) pending.push(node.children[i]);
+    }
+    return media;
+  }
+
+  _finishAutoAttempt(attempt, video) {
+    if (this._pendingAutoAttempt !== attempt) return;
+    if (performance.now() >= attempt.until) {
+      this._expireAutoAttempt(attempt);
+      return;
+    }
+    const selection = this._desiredCameraSelection();
+    if (attempt.kind === 'motion' && (selection.source !== 'auto' || selection.id !== attempt.id)) {
+      this._clearPendingAutoSwitch();
+      return;
+    }
+    if (this._viewerSlotFor(attempt.id) !== attempt.slot ||
+        !this._cameraMediaIn(attempt.slot).includes(video) ||
+        !video.videoWidth || !video.videoHeight) return;
+
+    if (attempt.kind === 'manual') {
+      this._promoteManualForObservation(attempt);
+    } else {
+      this._clearPendingAutoSwitch(true);
+      this._promoteViewer(attempt.id);
+    }
+  }
+
+  _promoteManualForObservation(attempt) {
+    if (this._pendingAutoAttempt !== attempt || attempt.promoted) return;
+    if (this._viewerSlotFor(attempt.id) !== attempt.slot) {
+      this._clearPendingAutoSwitch();
+      return;
+    }
+    window.clearTimeout(attempt.deadline);
+    this._cancelAutoFrame(attempt);
+    attempt.promoted = true;
+    attempt.visibleAt = performance.now();
+    attempt.progress = undefined;
+    attempt.slot.classList.add('instant');
+    this._promoteViewer(attempt.id);
+    this._ackManualIntent();
+  }
+
+  _observePresentedManualFrame(attempt, video, time, frames, presentationTime) {
+    if (this._pendingAutoAttempt !== attempt || !attempt.promoted ||
+        this._renderedActiveId !== attempt.id ||
+        this._viewerSlotFor(attempt.id) !== attempt.slot ||
+        !attempt.slot.classList.contains('active') ||
+        !this._cameraMediaIn(attempt.slot).includes(video)) return;
+    if (document.visibilityState === 'hidden' ||
+        (typeof this.getClientRects === 'function' && this.getClientRects().length === 0) ||
+        !video.videoWidth || !video.videoHeight || video.paused || video.ended ||
+        !Number.isFinite(time) || !Number.isFinite(frames) ||
+        (Number.isFinite(presentationTime) && presentationTime < attempt.visibleAt)) {
+      attempt.progress = undefined;
+      return;
+    }
+    const earlier = attempt.progress;
+    if (!earlier || time < earlier.time || frames < earlier.frames) {
+      attempt.progress = { time, frames };
+      return;
+    }
+    // A decoded poster/stalled frame is not live movement. Two post-promotion
+    // samples must advance the playback timeline and the frame count.
+    if (time <= earlier.time || frames <= earlier.frames) return;
+    this._clearPendingAutoSwitch(true);
+    this._setPreviewPhase('live');
+    this._ackManualIntent();
+    this._scheduleManualReset(attempt.id);
+  }
+
+  _watchAutoVideo(attempt) {
+    if (this._pendingAutoAttempt !== attempt) return;
+    if (!attempt.promoted && performance.now() >= attempt.until) {
+      this._expireAutoAttempt(attempt);
+      if (this._pendingAutoAttempt === attempt && attempt.promoted) {
+        attempt.poll = window.setTimeout(() => this._watchAutoVideo(attempt), 50);
+      }
+      return;
+    }
+    const liveVideos = this._cameraMediaIn(attempt.slot).filter(x => x.tagName === 'VIDEO');
+    const video = liveVideos.find(v => !v.paused && !v.ended) || liveVideos[0];
+    if (video !== attempt.video) {
+      this._cancelAutoFrame(attempt);
+      attempt.video = video;
+      attempt.progress = undefined;
+    }
+    if (video) {
+      if (typeof video.requestVideoFrameCallback === 'function') {
+        if (attempt.frameId === undefined) {
+          const version = attempt.frameVersion;
+          attempt.frameId = video.requestVideoFrameCallback((_now, meta) => {
+            if (this._pendingAutoAttempt !== attempt || attempt.video !== video ||
+                attempt.frameVersion !== version) return;
+            attempt.frameId = undefined;
+            if (attempt.promoted) {
+              this._observePresentedManualFrame(attempt, video, meta?.mediaTime, meta?.presentedFrames, meta?.presentationTime);
+            } else {
+              this._finishAutoAttempt(attempt, video);
+            }
+          });
+        }
+      } else if (attempt.promoted) {
+        let frames;
+        try {
+          frames = video.getVideoPlaybackQuality?.()?.totalVideoFrames ?? video.webkitDecodedFrameCount;
+        } catch { /* no observed frame progress */ }
+        this._observePresentedManualFrame(attempt, video, video.currentTime, frames);
+      } else if (attempt.kind === 'motion' && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+        this._finishAutoAttempt(attempt, video);
+      }
+    }
+    if (this._pendingAutoAttempt === attempt) {
+      attempt.poll = window.setTimeout(() => this._watchAutoVideo(attempt), attempt.promoted ? 250 : 50);
+    }
+  }
+
+  _cancelAutoFrame(attempt) {
+    attempt.frameVersion = (attempt.frameVersion || 0) + 1;
+    if (attempt.frameId !== undefined && typeof attempt.video?.cancelVideoFrameCallback === 'function') {
+      attempt.video.cancelVideoFrameCallback(attempt.frameId);
+    }
+    attempt.frameId = undefined;
   }
 
   _clearPendingAutoSwitch(keepPrepared = false) {
-    if (this._pendingAutoSwitchTimer) window.clearTimeout(this._pendingAutoSwitchTimer);
-    this._pendingAutoSwitchTimer = undefined;
-    this._pendingAutoActiveId = undefined;
+    const attempt = this._pendingAutoAttempt;
+    this._pendingAutoAttempt = undefined;
+    if (attempt) {
+      window.clearTimeout(attempt.deadline);
+      window.clearTimeout(attempt.poll);
+      this._cancelAutoFrame(attempt);
+    }
+    if (attempt?.kind === 'manual' || !keepPrepared) this._clearManualPreview();
     if (!keepPrepared) this._clearPreparedViewers();
   }
 
@@ -202,6 +478,19 @@ class SmartCameraSwitcher extends HTMLElement {
     const cfg = this._config;
     const selection = this._desiredCameraSelection();
     const activeId = selection.id;
+    if (selection.source !== 'manual') this._setPreviewPhase('auto');
+    // A local tap owns its warming viewer even if HA is still echoing the old
+    // selector state. Explicitly superseding taps cancel it in _selectCamera.
+    const manualAttempt = this._pendingAutoAttempt;
+    if (manualAttempt?.kind === 'manual' && (!manualAttempt.promoted ||
+        (selection.source === 'manual' && activeId === manualAttempt.id))) {
+      this._updateSelectorState();
+      this._updateChildHass();
+      return;
+    }
+    if (selection.source !== 'auto' || activeId !== this._unreadyAutoTarget) {
+      this._unreadyAutoTarget = undefined;
+    }
 
     if (!this._hasRendered || this._renderedCameraCount !== cfg.cameras.length) {
       this._clearPendingAutoSwitch();
@@ -210,6 +499,7 @@ class SmartCameraSwitcher extends HTMLElement {
     }
 
     if (this._renderedActiveId === activeId) {
+      if (selection.source !== 'manual') this._manualReturnDefaultUntil = undefined;
       this._clearPendingAutoSwitch();
       this._updateSelectorState();
       this._updateChildHass();
@@ -217,12 +507,33 @@ class SmartCameraSwitcher extends HTMLElement {
     }
 
     if (selection.source === 'manual') {
+      // The selector confirmation (or an unrelated HA update) can arrive while
+      // this same viewer is already warming. Don't rebuild it or restart its hold.
+      if (this._viewerSwapTimer && this._viewerSlotFor(activeId)?.classList.contains('prepared')) {
+        this._updateSelectorState();
+        this._updateChildHass();
+        return;
+      }
       this._clearPendingAutoSwitch();
       this._switchActiveCamera(activeId);
       return;
     }
 
-    this._scheduleAutoSwitch(activeId);
+    const returningFromManual = this._manualReturnDefaultUntil !== undefined &&
+      performance.now() <= this._manualReturnDefaultUntil;
+    this._manualReturnDefaultUntil = undefined;
+    if (returningFromManual && activeId === this._defaultCameraId()) {
+      this._clearPendingAutoSwitch();
+      const slot = this._prepareViewer(activeId);
+      if (slot) {
+        slot.classList.add('instant');
+        this._promoteViewer(activeId);
+        return;
+      }
+    }
+
+    if (selection.source === 'auto' && activeId !== this._defaultCameraId()) this._scheduleAutoSwitch(activeId);
+    else this._scheduleFallbackSwitch(activeId);
     this._updateSelectorState();
     this._updateChildHass();
   }
@@ -284,6 +595,19 @@ class SmartCameraSwitcher extends HTMLElement {
           smart-camera-switcher .viewer-slot.active {
             opacity: 1;
             z-index: 2;
+          }
+          smart-camera-switcher .viewer-slot.instant {
+            transition: none;
+          }
+          smart-camera-switcher .manual-preview {
+            position: absolute;
+            inset: 0;
+            display: block;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            pointer-events: none;
+            background: var(--divider-color, #171717);
           }
           smart-camera-switcher .viewer-slot.prepared {
             opacity: 0;
@@ -560,7 +884,7 @@ class SmartCameraSwitcher extends HTMLElement {
 }
 
 if (!customElements.get('smart-camera-switcher')) {
-  customElements.define('smart-camera-switcher', SmartCameraSwitcher);
+  customElements.define('smart-camera-switcher', SmartCameraSwitcherTest);
 }
 window.customCards = window.customCards || [];
 window.customCards.push({
